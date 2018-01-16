@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Dental Plan and Coverage Enquiry</title>
+	<script src="https://sdk.amazonaws.com/js/aws-sdk-2.41.0.min.js"></script>
+<style language="text/css">
+  .speech {border: 1px solid #DDD; width: 409px; padding: 0; margin: 0}
+  .speech img {float: right; width: 40px; }
+  .speech input {border: 0; width: 369px; display: inline-block; height: 40px;}
+
+		input::placeholder {
+			color: #ccc;
+			font-style: italic;
+		}
+
+		p.userRequest {
+			margin: 4px;
+			padding: 4px 10px 4px 30px;
+			border-radius: 4px;
+			min-width: 50%;
+			max-width: 85%;
+			float: left;
+			background-color: #7d7;
+			background-image: url(UserProfile.png);
+		    background-position: 0;
+		    background-size: 1.5em;
+		    background-repeat: no-repeat;
+		}
+
+		p.lexResponse {
+			margin: 4px;
+		    padding: 4px 34px 4px 10px;
+			border-radius: 4px;
+			text-align: right;
+			min-width: 50%;
+			max-width: 85%;
+			float: right;
+			background-color: #bbf;
+			font-style: italic;
+		    background-image: url(MetisProfile3.png);
+		    background-position: 99% 5%;
+		    background-size: 1.75em;
+		    background-repeat: no-repeat;
+		}
+
+		p.lexError {
+			margin: 4px;
+			padding: 4px 10px 4px 10px;
+			border-radius: 4px;
+			text-align: right;
+			min-width: 50%;
+			max-width: 85%;
+			float: right;
+			background-color: #f77;
+		}
+	</style>
+</head>
+
+<body>
+	<h1 style="text-align:  left">Metis Chat</h1>
+	<!--<h2 style="text-align:  left">Dental Plan and Coverage Enquiry</h2>-->
+	<p style="width: 400px">
+		Welcome to the dental plan &amp; coverages enquiry that you can perform with our Metis chatbot.
+	</p>
+	<div id="conversation" style="width: 400px; height: 400px; border: 1px solid #ccc; background-color: #eee; padding: 4px; overflow: scroll"></div>
+	<form id="chatform" style="margin-top: 10px" onsubmit="return pushChat();">
+		<div class="speech">
+			<input type="text" id="wisdom" value="" placeholder="What's my dental plan?" />
+			<img src="microphone.gif" onclick="startDictation()" />
+		</div>
+	</form>
+
+    <script src="js/aws-lex-audio.min.js"></script>
+	<script type="text/javascript">
+
+
+		// set the focus to the input box
+		document.getElementById("wisdom").focus();
+
+		// Initialize the Amazon Cognito credentials provider
+		AWS.config.region = 'eu-west-1'; // Region
+		AWS.config.credentials = new AWS.Credentials('AKIAIOIFS5PPBFDRMQRQ', 'wzG5Urogf46Pmklfl0dEBAhNStCqTUhpcBUTCPCD', null);
+
+		// Provide your Pool Id here
+		/*new AWS.CognitoIdentityCredentials({
+			IdentityPoolId: 'us-east-1:us-east-1_syvvcUVAs',
+		});*/
+
+		var lexruntime = new AWS.LexRuntime();
+		var lexUserId = '028131332638';
+		var sessionAttributes = {};
+
+
+		var welcomeMessage1 = {
+		  "message":"Hi There! I am Metis.",
+		};
+		var welcomeMessage2 = {
+		  "message":"Are you looking to inquire about any products or coverage? Let me know what your queries are and I’ll do the hardwork for you.",
+		};
+		var welcomeMessage3 = {
+		  "message":"Ready? Let’s go.",
+		};
+		var welcomeMessage4 = {
+		  "message":"What’s your name?",
+		};
+
+		showResponseWithoutState(welcomeMessage1);
+		showResponseWithoutState(welcomeMessage2);
+		showResponseWithoutState(welcomeMessage3);
+		showResponseWithoutState(welcomeMessage4);
+        //showResponse("Hi There! I am Metis.\nAre you looking to inquire about any products or coverage? Let me know what your queries are and I’ll do the hardwork for you.\nReady? Let’s go.\nWhat’s your name?");
+
+
+		function pushChat() {
+
+			// if there is text to be sent...
+			var wisdomText = document.getElementById('wisdom');
+			if (wisdomText && wisdomText.value && wisdomText.value.trim().length > 0) {
+
+				// disable input to show we're sending it
+				var wisdom = wisdomText.value.trim();
+				wisdomText.value = '...';
+				wisdomText.locked = true;
+
+				// send it to the Lex runtime
+				var params = {
+					botAlias: '$LATEST',
+					botName: 'Metis',
+					inputText: wisdom,
+					userId: lexUserId,
+					sessionAttributes: sessionAttributes
+				};
+				showRequest(wisdom);
+				lexruntime.postText(params, function(err, data) {
+					if (err) {
+						console.log(err, err.stack);
+						showError('Error:  ' + err.message + ' (see console for details)')
+					}
+					if (data) {
+						// capture the sessionAttributes for the next cycle
+						sessionAttributes = data.sessionAttributes;
+						// show response and/or error/dialog status
+						showResponseWithoutState(data);
+					}
+					// re-enable input
+					wisdomText.value = '';
+					wisdomText.locked = false;
+				});
+			}
+			// we always cancel form submission
+			return false;
+		}
+
+		function showRequest(daText) {
+
+			var conversationDiv = document.getElementById('conversation');
+			var requestPara = document.createElement("P");
+			requestPara.className = 'userRequest';
+			requestPara.appendChild(document.createTextNode(daText));
+			conversationDiv.appendChild(requestPara);
+			conversationDiv.scrollTop = conversationDiv.scrollHeight;
+		}
+
+		function showError(daText) {
+
+			var conversationDiv = document.getElementById('conversation');
+			var errorPara = document.createElement("P");
+			errorPara.className = 'lexError';
+			errorPara.appendChild(document.createTextNode(daText));
+			conversationDiv.appendChild(errorPara);
+			conversationDiv.scrollTop = conversationDiv.scrollHeight;
+		}
+
+		function showResponse(lexResponse) {
+
+			var conversationDiv = document.getElementById('conversation');
+			var responsePara = document.createElement("P");
+			responsePara.className = 'lexResponse';
+			if (lexResponse.message) {
+				if(lexResponse.message.indexOf("[{") !== -1) {
+					var textParts = lexResponse.message.split("[{");
+					console.log(textParts[0]);
+					responsePara.appendChild(document.createTextNode(textParts[0]));
+					console.log(textParts[1]);
+					responsePara.appendChild(buildHtmlTable(JSON.parse("[{".concat(textParts[1]))));
+				} else {
+					responsePara.appendChild(document.createTextNode(lexResponse.message));
+				}
+				responsePara.appendChild(document.createElement('br'));
+			}
+			if (lexResponse.dialogState === 'ReadyForFulfillment') {
+				responsePara.appendChild(document.createTextNode(
+					'Ready for fulfillment'));
+				// TODO:  show slot values
+			} else {
+				responsePara.appendChild(document.createTextNode(
+					'(' + lexResponse.dialogState + ')'));
+			}
+			conversationDiv.appendChild(responsePara);
+			conversationDiv.scrollTop = conversationDiv.scrollHeight;
+		}
+
+		function showResponseWithoutState(lexResponse) {
+
+			var conversationDiv = document.getElementById('conversation');
+			var responsePara = document.createElement("P");
+			responsePara.className = 'lexResponse';
+			if (lexResponse.message) {
+				if(lexResponse.message.indexOf("[{") !== -1) {
+					var textParts = lexResponse.message.split("[{");
+					console.log(textParts[0]);
+					responsePara.appendChild(document.createTextNode(textParts[0]));
+					console.log(textParts[1]);
+					responsePara.appendChild(buildHtmlTable(JSON.parse("[{".concat(textParts[1]))));
+				} else {
+					responsePara.appendChild(document.createTextNode(lexResponse.message));
+				}
+				responsePara.appendChild(document.createElement('br'));
+			}
+			conversationDiv.appendChild(responsePara);
+			conversationDiv.scrollTop = conversationDiv.scrollHeight;
+		}
+
+    function startDictation() {
+
+	    if (window.hasOwnProperty('webkitSpeechRecognition')) {
+
+	      var recognition = new webkitSpeechRecognition();
+
+	      recognition.continuous = false;
+	      recognition.interimResults = false;
+
+	      recognition.lang = "en-US";
+	      recognition.start();
+
+	      recognition.onresult = function(e) {
+			var capturedText = e.results[0][0].transcript;
+
+				var params = {
+					botAlias: '$LATEST',
+					botName: 'Metis',
+					inputText: capturedText,
+					userId: lexUserId,
+					sessionAttributes: sessionAttributes
+				};
+				showRequest(capturedText);
+				lexruntime.postText(params, function(err, data) {
+					if (err) {
+						console.log(err, err.stack);
+						showError('Error:  ' + err.message + ' (see console for details)')
+					}
+					if (data) {
+						// capture the sessionAttributes for the next cycle
+						sessionAttributes = data.sessionAttributes;
+						// show response and/or error/dialog status
+						showResponseWithoutState(data);
+					}
+					// re-enable input
+					wisdomText.value = '';
+					wisdomText.locked = false;
+				});
+
+
+
+	        recognition.stop();
+			// we always cancel form submission
+			return false;
+	      };
+
+	      recognition.onerror = function(e) {
+	        recognition.stop();
+	      }
+
+	    }
+  }
+
+var _table_ = document.createElement('table'),
+    _tr_ = document.createElement('tr'),
+    _th_ = document.createElement('th'),
+    _td_ = document.createElement('td');
+
+// Builds the HTML Table out of myList json data from Ivy restful service.
+ function buildHtmlTable(arr) {
+     var htable = _table_.cloneNode(false),
+         columns = addAllColumnHeaders(arr, htable);
+     for (var i=0, maxi=arr.length; i < maxi; ++i) {
+         var tr = _tr_.cloneNode(false);
+         for (var j=0, maxj=columns.length; j < maxj ; ++j) {
+             var td = _td_.cloneNode(false);
+                 cellValue = arr[i][columns[j]];
+             td.appendChild(document.createTextNode(arr[i][columns[j]] || ''));
+             tr.appendChild(td);
+         }
+         htable.appendChild(tr);
+     }
+
+     return htable;
+ }
+
+ // Adds a header row to the table and returns the set of columns.
+ // Need to do union of keys from all records as some records may not contain
+ // all records
+ function addAllColumnHeaders(arr, htable)
+ {
+     var columnSet = [],
+         tr = _tr_.cloneNode(false);
+     for (var i=0, l=arr.length; i < l; i++) {
+         for (var key in arr[i]) {
+             if (arr[i].hasOwnProperty(key) && columnSet.indexOf(key)===-1) {
+                 columnSet.push(key);
+                 var th = _th_.cloneNode(false);
+                 th.appendChild(document.createTextNode(key));
+                 tr.appendChild(th);
+             }
+         }
+     }
+     htable.appendChild(tr);
+     return columnSet;
+ }
+
+	</script>
+</body>
+
+</html>
